@@ -4,4 +4,3 @@ numpy
 Pillow
 scikit-learn
 matplotlib
-mediapipe==0.10.9
