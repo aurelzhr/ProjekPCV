@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Analisis Undertone Kulit</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <h1>💋 Analisis Undertone Kulit</h1>
+
+        <div class="button-group">
+            <button id="openCameraBtn">📷 Ambil dari Kamera</button>
+            <label for="uploadInput" class="upload-btn">🖼️ Upload dari Galeri</label>
+            <input type="file" id="uploadInput" accept="image/*" hidden>
+        </div>
+
+        <div id="cameraContainer" class="camera-wrapper" style="display: none;">
+            <video id="video" autoplay playsinline></video>
+            <button id="captureBtn">📸 Ambil Foto</button>
+        </div>
+
+        <img id="previewImage" style="display: none;" alt="Preview">
+
+        <button id="analyzeBtn" style="display: none; margin-top: 15px;">🔍 Analisis</button>
+
+        <div class="hasil" id="result"></div>
+    </div>
+
+    <canvas id="canvas" style="display: none;"></canvas>
+    <script>
+        const openCameraBtn = document.getElementById("openCameraBtn");
+        const uploadInput = document.getElementById("uploadInput");
+        const captureBtn = document.getElementById("captureBtn");
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const previewImage = document.getElementById("previewImage");
+        const analyzeBtn = document.getElementById("analyzeBtn");
+        const resultDiv = document.getElementById("result");
+
+        let capturedBlob = null;
+
+        openCameraBtn.onclick = async () => {
+            document.getElementById("cameraContainer").style.display = "block";
+            video.style.display = "block";
+            captureBtn.style.display = "inline-block";
+
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+        };
+
+        captureBtn.onclick = () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(blob => {
+                capturedBlob = blob;
+                previewImage.src = URL.createObjectURL(blob);
+                previewImage.style.display = "block";
+                analyzeBtn.style.display = "inline-block";
+
+                const stream = video.srcObject;
+                stream.getTracks().forEach(track => track.stop());
+
+                video.style.display = "none";
+                captureBtn.style.display = "none";
+                document.getElementById("cameraContainer").style.display = "none";
+            }, "image/jpeg");
+        };
+
+        uploadInput.onchange = () => {
+            const file = uploadInput.files[0];
+            if (file) {
+                capturedBlob = file;
+                previewImage.src = URL.createObjectURL(file);
+                previewImage.style.display = "block";
+                analyzeBtn.style.display = "inline-block";
+            }
+        };
+
+        analyzeBtn.onclick = async () => {
+            if (!capturedBlob) return;
+            const formData = new FormData();
+            formData.append("image", capturedBlob, "image.jpg");
+
+            resultDiv.innerHTML = "🔍 Menganalisis...";
+            try {
+                const res = await fetch("/analyze", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.error) {
+                    resultDiv.innerHTML = `❌ ${data.error}`;
+                } else {
+                    let warnaHTML = "";
+
+                    if (data.undertone.toLowerCase() === "cool") {
+                        warnaHTML = `
+                        <div class="warna-rekomendasi">
+                            <h3>Cocok dengan warna seperti:</h3>
+                            <div class="warna-list">
+                                <div class="warna-item">
+                                    <img src="/static/icons/softpink.jpg" alt="Soft pink">
+                                    <p>Soft pink</p>
+                                </div>
+                                <div class="warna-item">
+                                    <img src="/static/icons/plum.jpg" alt="Plum">
+                                    <p>Plum</p>
+                                </div>
+                                <div class="warna-item">
+                                    <img src="/static/icons/berry.jpg" alt="Berry">
+                                    <p>Berry</p>
+                                </div>
+                                <div class="warna-item">
+                                    <img src="/static/icons/mauve.jpg" alt="Mauve">
+                                    <p>Mauve</p>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    } else if (data.undertone.toLowerCase() === "warm") {
+                        warnaHTML = `
+                        <div class="warna-rekomendasi">
+                            <h3>Cocok dengan warna seperti:</h3>
+                            <div class="warna-list">
+                                <div class="warna-item">
+                                    <img src="/static/icons/coral.jpg" alt="Coral">
+                                    <p>Coral</p>
+                                </div>
+                                <div class="warna-item">
+                                    <img src="/static/icons/nude.jpg" alt="Nude">
+                                    <p>Nude</p>
+                                </div>
+                                <div class="warna-item">
+                                    <img src="/static/icons/peach.jpg" alt="Peach">
+                                    <p>Peach</p>
+                                </div>
+                                <div class="warna-item">
+                                    <img src="/static/icons/apricot.jpg" alt="Apricot">
+                                    <p>Apricot</p>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }
+
+                    resultDiv.innerHTML = `
+    <div class="hasil-judul">
+        <strong>Hasil:</strong><br>
+        Undertone: <b>${data.undertone}</b>
+    </div>
+    ${warnaHTML}
+`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = "⚠️ Terjadi kesalahan.";
+                console.error(err);
+            }
+        };
+    </script>
+</body>
+
+</html>
